@@ -10,14 +10,14 @@ var Sg = window.Sg || {};
 window.Sg = Sg;
 Sg.PoHp = Sg.PoHp || {};
 var pohp = Sg.PoHp;
-Sg.PoHp.version = 1.02;
+Sg.PoHp.version = 1.03;
 
 const TAG = 'Sg.SG_PopupHp';
 Sg.PoHp.TAG = TAG;
 
 //=============================================================================
  /*:
- * @plugindesc v1.02 메뉴창을 열지 않고 체력을 확인할 수 있게 해 줌
+ * @plugindesc v1.03 메뉴창을 열지 않고 체력을 확인할 수 있게 해 줌
  * @author SemteulGaram
  *
  * @param Horizontal Align
@@ -56,6 +56,13 @@ Sg.PoHp.TAG = TAG;
  * @type string
  * @desc 팝업을 수동으로 띄울 단축키 (빈칸으로 하면 꺼짐)
  *
+ * @param Disable 0HP Auto Popup
+ * @type boolean
+ * @on ON
+ * @off OFF
+ * @desc HP0
+ * @default false
+ *
  * @help
  * ============================================================================
  * Introduction
@@ -69,7 +76,7 @@ Sg.PoHp.TAG = TAG;
  *
  * 해당하는 명령어를 복사해서 [이벤트 명령] -> [스크립트]에 붙여넣기해서 사용
  *
- * window.Sg.PoHp.showPopup();    강제로 팝업을 띄움
+ * window.Sg.PoHp.showPopup();    수동 팝업을 띄움
  *
  * ============================================================================
  * Changelog
@@ -84,6 +91,9 @@ Sg.PoHp.TAG = TAG;
  * Version 1.02:
  * - 단축키로 팝업을 지정할 수 있음
  *
+ * Version 1.03:
+ * - 자동팝업모드에서 HP가 0일때 팝업을 띄우지 않는 옵션 추가
+ *
  * ============================================================================
  * End of Helpfile
  * ============================================================================
@@ -92,12 +102,13 @@ Sg.PoHp.TAG = TAG;
 
 pohp.Parameters = PluginManager.parameters('SG_PopupHP');
 pohp.param = pohp.param || {};
-pohp.param.horizontalAlign = Boolean(pohp.Parameters['Horizontal Align']);
+pohp.param.horizontalAlign = pohp.Parameters['Horizontal Align'] === 'true';
 pohp.param.hpImage = pohp.Parameters['Hp Image'];
-pohp.param.automaticPopup = Boolean(pohp.Parameters['Automatic Popup']);
+pohp.param.automaticPopup = pohp.Parameters['Automatic Popup'] === 'true';
 pohp.param.popupDuration = Number(pohp.Parameters['Popup Duration']);
 pohp.param.fadeoutDuration = Number(pohp.Parameters['Fadeout Duration']);
 pohp.param.popupKey = ('' + pohp.Parameters['Popup Key']).toLowerCase();
+pohp.param.disable0HpAutoPopup = pohp.Parameters['Disable 0HP Auto Popup'] === 'true';
 
 pohp.isShow = false;
 pohp.popupExpire1At = null;
@@ -116,7 +127,7 @@ SceneManager.update = function() {
     pohp.now = Date.now();
     if (pohp.popupExpire2At < pohp.now) {
       console.debug(TAG, 'popup expired');
-      pohp.hidePopup()
+      pohp.hidePopup();
     } else if (pohp.popupExpire1At < pohp.now) {
       SceneManager._scene._SG_hpContainer.alpha
         = (pohp.popupExpire2At - pohp.now)/pohp.param.fadeoutDuration;
@@ -138,7 +149,7 @@ pohp.getHpImage = function(hp) {
     pohp.hpImage[hp] = new PIXI.Texture(ImageManager.loadPicture(pohp._)._baseTexture);
   }
   return pohp.hpImage[hp];
-}
+};
 
 // show popup
 pohp.showPopup = function() {
@@ -149,7 +160,7 @@ pohp.showPopup = function() {
 
   // Create hp popup if not exists
   if (!SceneManager._scene._SG_hpContainer) {
-    console.debug(TAG, 'sprite creating')
+    console.debug(TAG, 'sprite creating');
     var container = new Sprite();
     SceneManager._scene._SG_hpContainer = container;
     if (pohp.param.horizontalAlign) {   // LEFT
@@ -174,16 +185,17 @@ pohp.hidePopup = function() {
   pohp.isShow = false;
   if (!SceneManager._scene || !SceneManager._scene._SG_hpContainer) return;
   SceneManager._scene.removeChild(SceneManager._scene._SG_hpContainer);
-}
+};
 
 // Popup Key handle
 pohp.onKeyPress = function(event) {
   var pohp = window.Sg.PoHp;
   if (event.key === pohp.param.popupKey) {
-    console.debug(pohp.TAG, 'popupKey pressed')
+    console.debug(pohp.TAG, 'popupKey pressed');
     pohp.showPopup();
   }
-}
+};
+
 if (pohp.param.popupKey != null) {
   window.addEventListener('keypress', pohp.onKeyPress);
 }
@@ -201,11 +213,12 @@ if (pohp.param.automaticPopup) {
       pohp.lastHp = hp;
     } else if (pohp.lastHp != hp) {
       pohp.lastHp = hp;
+      if (pohp.param.disable0HpAutoPopup && hp == 0) return;
       try {
         pohp.showPopup();
       } catch (err) {
         console.error(TAG, err);
       }
     }
-  }
+  };
 }
