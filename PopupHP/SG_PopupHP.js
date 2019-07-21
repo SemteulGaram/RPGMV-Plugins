@@ -21,46 +21,46 @@ Sg.PoHp.TAG = TAG;
  * @author SemteulGaram
  *
  * @param Horizontal Align
+ * @desc 이미지 수평 위치
  * @type boolean
  * @on 좌
  * @off 우
- * @desc 이미지 수평 위치
  * @default true
  *
  * @param Hp Image
- * @type string
  * @desc "img/pictures" 폴더에 있는 hp 이미지 시퀸스 프리픽스
  * (예. "popup-hp-" 는 popup-hp-1.png, popup-hp-2.png... 로 바뀜)
+ * @type string
  * @default popup-hp-
  *
  * @param Automatic Popup
+ * @desc 체력이 바뀔때마다 자동으로 팝업 띄우기
  * @type boolean
  * @on ON
  * @off OFF
- * @desc 체력이 바뀔때마다 자동으로 팝업 띄우기
  * @default true
  *
  * @param Popup Duration
- * @type number
  * @desc 팝업 보여주는 시간 (밀리초 단위)
+ * @type number
  * @min 0
  * @default 500
  *
  * @param Fadeout Duration
- * @type number
  * @desc 팝업이 페이드 아웃되는 시간 (밀리초 단위)
+ * @type number
  * @min 0
  * @default 500
  *
  * @param Popup Key
- * @type string
  * @desc 팝업을 수동으로 띄울 단축키 (빈칸으로 하면 꺼짐)
+ * @type string
  *
  * @param Disable 0HP Auto Popup
+ * @desc 체력이 0으로 바뀔때 뜨는 자동 팝업을 비활성화
  * @type boolean
  * @on ON
  * @off OFF
- * @desc HP0
  * @default false
  *
  * @help
