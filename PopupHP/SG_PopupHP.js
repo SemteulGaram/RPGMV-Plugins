@@ -6,18 +6,13 @@
 var Imported = Imported || {};
 Imported.SG_PopupHP = true;
 
-var Sg = window.Sg || {};
-window.Sg = Sg;
-Sg.PoHp = Sg.PoHp || {};
-var pohp = Sg.PoHp;
-Sg.PoHp.version = 1.04;
-
-const TAG = 'Sg.SG_PopupHp';
-Sg.PoHp.TAG = TAG;
+window.Sg = window.Sg || {};
+window.Sg.PoHp = window.Sg.PoHp || {};
+window.Sg.PoHp.version = 1.05;
 
 //=============================================================================
  /*:
- * @plugindesc v1.04 메뉴창을 열지 않고 체력을 확인할 수 있게 해 줌
+ * @plugindesc v1.05 메뉴창을 열지 않고 체력을 확인할 수 있게 해 줌
  * @author SemteulGaram
  *
  * @param Horizontal Align
@@ -97,132 +92,143 @@ Sg.PoHp.TAG = TAG;
  * Version 1.04:
  * - 특수키로도 팝업키를 지정할 수 있음 (예. Control, Alt, ArrowUp...)
  *
+ * Version 1.05:
+ * - 전역 스코프 오염 방지 처리
+ *
  * ============================================================================
  * End of Helpfile
  * ============================================================================
  */
 //=============================================================================
 
-pohp.Parameters = PluginManager.parameters('SG_PopupHP');
-pohp.param = pohp.param || {};
-pohp.param.horizontalAlign = pohp.Parameters['Horizontal Align'] === 'true';
-pohp.param.hpImage = pohp.Parameters['Hp Image'];
-pohp.param.automaticPopup = pohp.Parameters['Automatic Popup'] === 'true';
-pohp.param.popupDuration = Number(pohp.Parameters['Popup Duration']);
-pohp.param.fadeoutDuration = Number(pohp.Parameters['Fadeout Duration']);
-pohp.param.popupKey = pohp.Parameters['Popup Key'];
-pohp.param.disable0HpAutoPopup = pohp.Parameters['Disable 0HP Auto Popup'] === 'true';
-
-pohp.isShow = false;
-pohp.popupExpire1At = null;
-pohp.popupExpire2At = null;
-pohp.now = null;
-pohp.hpImage = {};
-
-// fadeout, timeout handle
-pohp.SceneManager_update = SceneManager.update;
-SceneManager.update = function() {
-  const pohp = window.Sg.PoHp;
-  pohp.SceneManager_update.apply(this, arguments);
-  try {
-    // handle timeout & fadeout
-    if (!pohp.isShow) return;
-    if (!SceneManager._scene._SG_hpContainer) pohp.hidePopup();
-    pohp.now = Date.now();
-    if (pohp.popupExpire2At < pohp.now) {
-      console.debug(TAG, 'popup expired');
-      pohp.hidePopup();
-    } else if (pohp.popupExpire1At < pohp.now) {
-      SceneManager._scene._SG_hpContainer.alpha
-        = (pohp.popupExpire2At - pohp.now)/pohp.param.fadeoutDuration;
-    }
-  } catch (err) {
-    console.error(TAG, err);
-  }
-};
-
-// polyfill
-pohp.getHp = function() {
-  return $gameActors.actor(1).hp;
-};
-
-// hp image cache
-pohp.getHpImage = function(hp) {
-  if (!pohp.hpImage[hp]) {
-    console.debug(TAG, 'img/pictures load:', (pohp._ = pohp.param.hpImage + hp));
-    pohp.hpImage[hp] = new PIXI.Texture(ImageManager.loadPicture(pohp._)._baseTexture);
-  }
-  return pohp.hpImage[hp];
-};
-
-// show popup
-pohp.showPopup = function() {
-  if (!SceneManager._scene) {
-    console.debug(TAG, 'scene not ready. skipped');
-    return;
-  }
-
-  // Create hp popup if not exists
-  if (!SceneManager._scene._SG_hpContainer) {
-    console.debug(TAG, 'sprite creating');
-    var container = new Sprite();
-    SceneManager._scene._SG_hpContainer = container;
-    if (pohp.param.horizontalAlign) {   // LEFT
-      container.x = 0;
-    } else {                            // RIGHT
-      container.x = Graphics.width - container.width;
-    }
-  }
-  // change image
-  SceneManager._scene._SG_hpContainer.texture = pohp.getHpImage(pohp.getHp())
-  SceneManager._scene._SG_hpContainer.alpha = 1;
-  // show on screen
-  if (!pohp.isShow) SceneManager._scene.addChild(SceneManager._scene._SG_hpContainer);
-  pohp.isShow = true;
-  pohp.popupExpire1At = Date.now() + pohp.param.popupDuration;
-  pohp.popupExpire2At = pohp.popupExpire1At + pohp.param.fadeoutDuration;
-};
-
-// (force) hide popup
-pohp.hidePopup = function() {
-  if (!pohp.isShow) return;
-  pohp.isShow = false;
-  if (!SceneManager._scene || !SceneManager._scene._SG_hpContainer) return;
-  SceneManager._scene.removeChild(SceneManager._scene._SG_hpContainer);
-};
-
-// Popup Key handle
-pohp.onKeyPress = function(event) {
+(function() {
   var pohp = window.Sg.PoHp;
-  if (event.key === pohp.param.popupKey) {
-    console.debug(pohp.TAG, 'popupKey pressed');
-    pohp.showPopup();
-  }
-};
 
-if (pohp.param.popupKey != null) {
-  window.addEventListener('keydown', pohp.onKeyPress, { capture: true });
-}
+  const TAG = 'Sg.SG_PopupHp';
+  Sg.PoHp.TAG = TAG;
+  console.info(pohp.TAG, 'load');
 
-// Automatic Popup handle
-if (pohp.param.automaticPopup) {
-  // @Override
-  pohp.Game_Player_update = Game_Player.prototype.update;
-  Game_Player.prototype.update = function () {
-    pohp.Game_Player_update.apply(this, arguments);
+  pohp.Parameters = PluginManager.parameters('SG_PopupHP');
+  pohp.param = pohp.param || {};
+  pohp.param.horizontalAlign = pohp.Parameters['Horizontal Align'] === 'true';
+  pohp.param.hpImage = pohp.Parameters['Hp Image'];
+  pohp.param.automaticPopup = pohp.Parameters['Automatic Popup'] === 'true';
+  pohp.param.popupDuration = Number(pohp.Parameters['Popup Duration']);
+  pohp.param.fadeoutDuration = Number(pohp.Parameters['Fadeout Duration']);
+  pohp.param.popupKey = pohp.Parameters['Popup Key'];
+  pohp.param.disable0HpAutoPopup = pohp.Parameters['Disable 0HP Auto Popup'] === 'true';
 
-    // detect hp change
-    const hp = pohp.getHp();
-    if (pohp.lastHp === undefined) {
-      pohp.lastHp = hp;
-    } else if (pohp.lastHp != hp) {
-      pohp.lastHp = hp;
-      if (pohp.param.disable0HpAutoPopup && hp == 0) return;
-      try {
-        pohp.showPopup();
-      } catch (err) {
-        console.error(TAG, err);
+  pohp.isShow = false;
+  pohp.popupExpire1At = null;
+  pohp.popupExpire2At = null;
+  pohp.now = null;
+  pohp.hpImage = {};
+
+  // fadeout, timeout handle
+  pohp.SceneManager_update = SceneManager.update;
+  SceneManager.update = function() {
+    const pohp = window.Sg.PoHp;
+    pohp.SceneManager_update.apply(this, arguments);
+    try {
+      // handle timeout & fadeout
+      if (!pohp.isShow) return;
+      if (!SceneManager._scene._SG_hpContainer) pohp.hidePopup();
+      pohp.now = Date.now();
+      if (pohp.popupExpire2At < pohp.now) {
+        console.debug(pohp.TAG, 'popup expired');
+        pohp.hidePopup();
+      } else if (pohp.popupExpire1At < pohp.now) {
+        SceneManager._scene._SG_hpContainer.alpha
+          = (pohp.popupExpire2At - pohp.now)/pohp.param.fadeoutDuration;
       }
+    } catch (err) {
+      console.error(pohp.TAG, err);
     }
   };
-}
+
+  // polyfill
+  pohp.getHp = function() {
+    return $gameActors.actor(1).hp;
+  };
+
+  // hp image cache
+  pohp.getHpImage = function(hp) {
+    if (!pohp.hpImage[hp]) {
+      console.debug(pohp.TAG, 'img/pictures load:', (pohp._ = pohp.param.hpImage + hp));
+      pohp.hpImage[hp] = new PIXI.Texture(ImageManager.loadPicture(pohp._)._baseTexture);
+    }
+    return pohp.hpImage[hp];
+  };
+
+  // show popup
+  pohp.showPopup = function() {
+    if (!SceneManager._scene) {
+      console.debug(pohp.TAG, 'scene not ready. skipped');
+      return;
+    }
+
+    // Create hp popup if not exists
+    if (!SceneManager._scene._SG_hpContainer) {
+      console.debug(pohp.TAG, 'sprite creating');
+      var container = new Sprite();
+      SceneManager._scene._SG_hpContainer = container;
+      if (pohp.param.horizontalAlign) {   // LEFT
+        container.x = 0;
+      } else {                            // RIGHT
+        container.x = Graphics.width - container.width;
+      }
+    }
+    // change image
+    SceneManager._scene._SG_hpContainer.texture = pohp.getHpImage(pohp.getHp())
+    SceneManager._scene._SG_hpContainer.alpha = 1;
+    // show on screen
+    if (!pohp.isShow) SceneManager._scene.addChild(SceneManager._scene._SG_hpContainer);
+    pohp.isShow = true;
+    pohp.popupExpire1At = Date.now() + pohp.param.popupDuration;
+    pohp.popupExpire2At = pohp.popupExpire1At + pohp.param.fadeoutDuration;
+  };
+
+  // (force) hide popup
+  pohp.hidePopup = function() {
+    if (!pohp.isShow) return;
+    pohp.isShow = false;
+    if (!SceneManager._scene || !SceneManager._scene._SG_hpContainer) return;
+    SceneManager._scene.removeChild(SceneManager._scene._SG_hpContainer);
+  };
+
+  // Popup Key handle
+  pohp.onKeyPress = function(event) {
+    var pohp = window.Sg.PoHp;
+    if (event.key === pohp.param.popupKey) {
+      console.debug(pohp.TAG, 'popupKey pressed');
+      pohp.showPopup();
+    }
+  };
+
+  if (pohp.param.popupKey != null) {
+    window.addEventListener('keydown', pohp.onKeyPress, { capture: true });
+  }
+
+  // Automatic Popup handle
+  if (pohp.param.automaticPopup) {
+    // @Override
+    pohp.Game_Player_update = Game_Player.prototype.update;
+    Game_Player.prototype.update = function () {
+      pohp.Game_Player_update.apply(this, arguments);
+
+      // detect hp change
+      const hp = pohp.getHp();
+      if (pohp.lastHp === undefined) {
+        pohp.lastHp = hp;
+      } else if (pohp.lastHp != hp) {
+        pohp.lastHp = hp;
+        if (pohp.param.disable0HpAutoPopup && hp == 0) return;
+        try {
+          pohp.showPopup();
+        } catch (err) {
+          console.error(pohp.TAG, err);
+        }
+      }
+    };
+  }
+})();

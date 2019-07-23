@@ -55,7 +55,7 @@ window.Sg.PoIt.version = 1;
 
   const TAG = 'Sg.SG_PopupItems';
   Sg.PoIt.TAG = TAG;
-  console.info(TAG, 'load');
+  console.info(poit.TAG, 'load');
 
   poit.Parameters = PluginManager.parameters('SG_PopupItems');
   poit.param = poit.param || {};
