@@ -10,14 +10,14 @@ var Sg = window.Sg || {};
 window.Sg = Sg;
 Sg.PoHp = Sg.PoHp || {};
 var pohp = Sg.PoHp;
-Sg.PoHp.version = 1.03;
+Sg.PoHp.version = 1.04;
 
 const TAG = 'Sg.SG_PopupHp';
 Sg.PoHp.TAG = TAG;
 
 //=============================================================================
  /*:
- * @plugindesc v1.03 메뉴창을 열지 않고 체력을 확인할 수 있게 해 줌
+ * @plugindesc v1.04 메뉴창을 열지 않고 체력을 확인할 수 있게 해 줌
  * @author SemteulGaram
  *
  * @param Horizontal Align
@@ -93,6 +93,9 @@ Sg.PoHp.TAG = TAG;
  *
  * Version 1.03:
  * - 자동팝업모드에서 HP가 0일때 팝업을 띄우지 않는 옵션 추가
+ *
+ * Version 1.04:
+ * - 특수키로도 팝업키를 지정할 수 있음 (예. Control, Alt, ArrowUp...)
  *
  * ============================================================================
  * End of Helpfile
