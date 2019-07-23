@@ -197,7 +197,7 @@ pohp.onKeyPress = function(event) {
 };
 
 if (pohp.param.popupKey != null) {
-  window.addEventListener('keypress', pohp.onKeyPress);
+  window.addEventListener('keydown', pohp.onKeyPress, { capture: true });
 }
 
 // Automatic Popup handle
