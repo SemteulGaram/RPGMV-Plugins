@@ -122,6 +122,7 @@ pohp.hpImage = {};
 // fadeout, timeout handle
 pohp.SceneManager_update = SceneManager.update;
 SceneManager.update = function() {
+  const pohp = window.Sg.PoHp;
   pohp.SceneManager_update.apply(this, arguments);
   try {
     // handle timeout & fadeout
