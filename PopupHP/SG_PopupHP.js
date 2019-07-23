@@ -110,7 +110,7 @@ pohp.param.hpImage = pohp.Parameters['Hp Image'];
 pohp.param.automaticPopup = pohp.Parameters['Automatic Popup'] === 'true';
 pohp.param.popupDuration = Number(pohp.Parameters['Popup Duration']);
 pohp.param.fadeoutDuration = Number(pohp.Parameters['Fadeout Duration']);
-pohp.param.popupKey = ('' + pohp.Parameters['Popup Key']).toLowerCase();
+pohp.param.popupKey = pohp.Parameters['Popup Key'];
 pohp.param.disable0HpAutoPopup = pohp.Parameters['Disable 0HP Auto Popup'] === 'true';
 
 pohp.isShow = false;
