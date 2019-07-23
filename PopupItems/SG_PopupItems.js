@@ -65,6 +65,7 @@ window.Sg.PoIt.version = 1;
   poit.lastTiming = null;
   // 0: disappear, 1: appearing, 2: appear, 3: disappering
   poit.step = 0;
+  poit.container = {};
 
   // Scene ticking
   poit.SceneManager_update = SceneManager.update;
@@ -86,7 +87,11 @@ window.Sg.PoIt.version = 1;
     const poit = window.Sg.PoIt;
     if (event.key === poit.param.itemWindowKey) {
       console.debug(poit.TAG, 'itemWindowKey down');
-      poit.showItemWindow();
+      if (poit.isShow) {
+        poit.hideItemWindow();
+      } else {
+        poit.showItemWindow();
+      }
     }
   }
 
@@ -97,7 +102,7 @@ window.Sg.PoIt.version = 1;
   }
 
   // internal function
-  poit._getPlayerItemList = function () {
+  poit._getPlayerItemList = function() {
     const items = [];
     if (!$gameParty || !$dataItems || !$gameParty._items
       || $gameParty._items.length === 0) return items;
@@ -113,7 +118,7 @@ window.Sg.PoIt.version = 1;
     return items;
   }
 
-  poit._getIconSpriteFromIndex = function (index) {
+  poit._getIconSpriteFromIndex = function(index) {
     const bitmap = new Bitmap(Window_Base._iconWidth, Window_Base._iconHeight);
     const iconSet = ImageManager.loadSystem('IconSet');
     const pw = Window_Base._iconWidth;
@@ -124,6 +129,62 @@ window.Sg.PoIt.version = 1;
     bitmap.blt(iconSet, sx, sy, pw, ph, 0, 0);
 
     return new Sprite(bitmap);
+  };
+
+  poit._ensureWindowTextureCanvas = function() {
+    if (!poit.container.canvas) {
+      console.debug(poit.TAG, 'create window texture canvas');
+      poit.container.canvas = document.createElement('canvas');
+      poit.container.canvas.style.display = 'none';
+      poit.container.ctx = poit.container.canvas.getContext('2d');
+    }
+    return poit.container.canvas;
+  };
+
+  poit._drawWindowTextureCanvas = function(width, height) {
+    const canvas = poit._ensureWindowTextureCanvas();
+    const ctx = poit.container.ctx;
+    const fadeWidth = 100;
+
+    canvas.height = height;
+    ctx.clearRect(0, 0, width, height);
+
+    if (fadeWidth + width > Graphics.width) { // draw fullwidth
+      canvas.width = Graphics.width;
+      ctx.globalAlpha = 0.5;
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, Graphics.width, height);
+      return true;
+    } else {
+      canvas.width = width + fadeWidth;
+      ctx.globalAlpha = 0.5;
+      ctx.fillStyle = '#000000';
+      const grd = ctx.createLinearGradient(0, 0, fadeWidth, 0);
+      grd.addColorStop(0, 'rgba(0, 0, 0, 0)');
+      grd.addColorStop(1, 'rgba(0, 0, 0, 1)');
+      ctx.fillStyle = grd;
+      ctx.fillRect(0, 0, fadeWidth, height);
+
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(fadeWidth, 0, width, height);
+      return false;
+    }
+  }
+
+  poit._ensureWindowTexture = function() {
+    if (!poit.container.texture) {
+      poit.container.texture
+        = PIXI.Texture.fromCanvas(poit._ensureWindowTextureCanvas());
+      // TODO: need this?
+      //poit.container.texture.baseTexture.mipmaps = true;
+    }
+    return poit.container.texture;
+  };
+
+  poit._drawWindowTexture = function(width, height) {
+    const result = poit._drawWindowTextureCanvas(width, height);
+    poit._ensureWindowTexture().baseTexture.update();
+    return result;
   };
 
   // window handle function
@@ -139,7 +200,9 @@ window.Sg.PoIt.version = 1;
     if (!SceneManager._scene._SG_item) {
       console.debug(poit.TAG, 'sprite creating');
       container = new Sprite();
+      poit.container.sprite = container;
       SceneManager._scene._SG_item = container;
+      container.texture = poit._ensureWindowTexture();
     } else {
       container = SceneManager._scene._SG_item;
       container.removeChildren();
@@ -148,23 +211,40 @@ window.Sg.PoIt.version = 1;
     const items = poit._getPlayerItemList();
     for (var i = 0; i < items.length; i++) {
       const itemSprite = poit._getIconSpriteFromIndex(items[i].data.iconIndex);
-      itemSprite.x = i * 48;
+      itemSprite.anchor.x = 0.5;
+      itemSprite.anchor.y = 0.5;
+      itemSprite.x = i * 64 + 100 + 16;
+      itemSprite.y = 32 + 16;
       container.addChild(itemSprite);
     }
 
     // TODO: location
     // TODO: dynamic location change
-    container.width = 200;
-    container.height = 200;
+    container.width = items.length*64 + 100;
+    container.height = 96;
+    container.x = Graphics.width - container.width;
+    container.y = Graphics.height - container.height;
+    poit._drawWindowTexture(items.length*64, 96);
 
-    SceneManager._scene.addChild(container);
+    if (!poit.isShow) SceneManager._scene.addChild(container);
+    poit.isShow = true;
 
     // TODO: block key event
   };
 
   poit.hideItemWindow = function() {
+    if (!poit.isShow) return;
+    poit.isShow = false;
 
+    if (!SceneManager._scene._SG_item) return;
+    SceneManager._scene.removeChild(SceneManager._scene._SG_item);
   };
 
-  poit.hideItemWindowNow = function() {}
+  poit.hideItemWindowNow = function() {
+    if (!poit.isShow) return;
+    poit.isShow = false;
+
+    if (!SceneManager._scene._SG_item) return;
+    SceneManager._scene.removeChild(SceneManager._scene._SG_item);
+  }
 })();
