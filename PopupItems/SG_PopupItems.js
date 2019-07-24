@@ -63,9 +63,14 @@ window.Sg.PoIt.version = 1;
 
   poit.isShow = false;
   poit.lastTiming = null;
+  poit.lastAfter = null;
+  poit.lastPct = null;
   // 0: disappear, 1: appearing, 2: appear, 3: disappering
   poit.step = 0;
   poit.container = {};
+
+  poit.SHOW_DURATION = 250;
+  poit.HIDE_DURATION = 250;
 
   // Scene ticking
   poit.SceneManager_update = SceneManager.update;
@@ -74,7 +79,41 @@ window.Sg.PoIt.version = 1;
     poit.SceneManager_update.apply(this, arguments);
     try {
       // handle ticking
-      if (!poit.isShow) return;
+      if (!poit.isShow || !SceneManager._scene._SG_item) return;
+      switch (poit.step) {
+        default:
+          console.error(poit.TAG, 'WILL NOT HAPPEN> unknown step:', poit.step);
+          poit.hideItemWindowNow();
+        break; case 0:
+          // do nothing
+        break; case 1:
+          poit.lastAfter = Date.now() - poit.lastTiming;
+          if (poit.lastAfter < poit.SHOW_DURATION) {
+            poit.lastPct = 1 - Math.pow(1 - poit.lastAfter/poit.SHOW_DURATION, 3);
+            console.log(poit.lastPct);
+            poit.container.sprite.x = Graphics.width
+              - poit.container.sprite.width*poit.lastPct;
+            poit.container.sprite.alpha = poit.lastPct;
+          } else {
+            poit.container.sprite.x = Graphics.width
+              - poit.container.sprite.width;
+            poit.container.sprite.alpha = 1;
+            poit.step = 2;
+          }
+        break; case 2:
+          // do nothing
+        break; case 3:
+          poit.lastAfter = Date.now() - poit.lastTiming;
+          if (poit.lastAfter < poit.HIDE_DURATION) {
+            poit.lastPct = 1 - Math.pow(poit.lastAfter/poit.HIDE_DURATION, 3);
+            poit.container.sprite.x = Graphics.width
+              - poit.container.sprite.width*poit.lastPct;
+            poit.container.sprite.alpha = poit.lastPct;
+          } else {
+            poit.hideItemWindowNow();
+          }
+        break;
+      }
       // TODO
       // switch (poit.step) {}
     } catch (err) {
@@ -199,6 +238,7 @@ window.Sg.PoIt.version = 1;
     // Create item window create
     if (!SceneManager._scene._SG_item) {
       console.debug(poit.TAG, 'sprite creating');
+      poit.isShow = false;
       container = new Sprite();
       poit.container.sprite = container;
       SceneManager._scene._SG_item = container;
@@ -222,28 +262,35 @@ window.Sg.PoIt.version = 1;
     // TODO: dynamic location change
     container.width = items.length*64 + 100;
     container.height = 96;
-    container.x = Graphics.width - container.width;
+    container.x = Graphics.width;
     container.y = Graphics.height - container.height;
     poit._drawWindowTexture(items.length*64, 96);
 
     if (!poit.isShow) SceneManager._scene.addChild(container);
     poit.isShow = true;
-
+    // animation start
+    poit.lastTiming = Date.now();
+    poit.step = 1;
     // TODO: block key event
   };
 
   poit.hideItemWindow = function() {
     if (!poit.isShow) return;
-    poit.isShow = false;
-
-    if (!SceneManager._scene._SG_item) return;
-    SceneManager._scene.removeChild(SceneManager._scene._SG_item);
+    if (!SceneManager._scene._SG_item) {
+      poit.step = 0;
+      poit.isShow = false;
+      poit.showItemWindow();
+      return;
+    }
+    // animation start
+    poit.lastTiming = Date.now();
+    poit.step = 3;
   };
 
   poit.hideItemWindowNow = function() {
+    poit.step = 0;
     if (!poit.isShow) return;
     poit.isShow = false;
-
     if (!SceneManager._scene._SG_item) return;
     SceneManager._scene.removeChild(SceneManager._scene._SG_item);
   }
