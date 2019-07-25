@@ -208,7 +208,58 @@ window.Sg.PoIt.version = 1;
       ctx.fillRect(fadeWidth, 0, width, height);
       return false;
     }
-  }
+  };
+
+  poit._createItem = function(item) {
+    const frameSprite = new Sprite();
+    frameSprite.width = 64;
+    frameSprite.height = 64;
+
+    const itemSprite = poit._getIconSpriteFromIndex(item.data.iconIndex);
+    itemSprite.anchor.x = 0.5;
+    itemSprite.anchor.y = 0.5;
+    frameSprite.addChild(itemSprite);
+
+    const coverBitmap = new Bitmap(64, 64);
+    const coverContext = coverBitmap.context;
+    if (item.count !== 1) {   // 아이템 갯수가 1이 아닐경우에만 화면에 표시
+      coverContext.fillStyle = 'white';
+      coverContext.shadowColor = 'black';
+      coverContext.shadowBlur = 5;
+      coverContext.textAlign = 'center';
+      coverContext.textBaseline = 'middle';
+      coverContext.font = '16px GameFont';
+      coverContext.fillText('' + item.count, 48, 48);
+    }
+
+    const coverSprite = new Sprite(coverBitmap);
+    coverSprite.anchor.x = 0.5;
+    coverSprite.anchor.y = 0.5;
+    frameSprite.addChild(coverSprite);
+
+    return frameSprite;
+  };
+
+  poit._updateItemList = function() {
+    const items = poit._getPlayerItemList();
+    const container = poit.container.sprite;
+    for (var i = 0; i < items.length; i++) {
+      const itemSprite = poit._createItem(items[i]);
+      itemSprite.anchor.x = 0.5;
+      itemSprite.anchor.y = 0.5;
+      itemSprite.x = i * 64 + 100 + 16;
+      itemSprite.y = 32 + 16;
+      container.addChild(itemSprite);
+    }
+
+    // TODO: location
+    // TODO: dynamic location change
+    container.width = items.length*64 + 100;
+    container.height = 96;
+    container.x = Graphics.width;
+    container.y = Graphics.height - container.height;
+    poit._drawWindowTexture(items.length*64, 96);
+  };
 
   poit._ensureWindowTexture = function() {
     if (!poit.container.texture) {
@@ -248,23 +299,7 @@ window.Sg.PoIt.version = 1;
       container.removeChildren();
     }
 
-    const items = poit._getPlayerItemList();
-    for (var i = 0; i < items.length; i++) {
-      const itemSprite = poit._getIconSpriteFromIndex(items[i].data.iconIndex);
-      itemSprite.anchor.x = 0.5;
-      itemSprite.anchor.y = 0.5;
-      itemSprite.x = i * 64 + 100 + 16;
-      itemSprite.y = 32 + 16;
-      container.addChild(itemSprite);
-    }
-
-    // TODO: location
-    // TODO: dynamic location change
-    container.width = items.length*64 + 100;
-    container.height = 96;
-    container.x = Graphics.width;
-    container.y = Graphics.height - container.height;
-    poit._drawWindowTexture(items.length*64, 96);
+    poit._updateItemList();
 
     if (!poit.isShow) SceneManager._scene.addChild(container);
     poit.isShow = true;
