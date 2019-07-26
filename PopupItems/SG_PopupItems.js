@@ -65,9 +65,11 @@ window.Sg.PoIt.version = 1;
   poit.lastTiming = null;
   poit.lastAfter = null;
   poit.lastPct = null;
-  // 0: disappear, 1: appearing, 2: appear, 3: disappering
+  // 0(0x00): disappear, 1(0x01): disappering, 2(0x10): appear, 3(0x11): appearing
   poit.step = 0;
   poit.container = {};
+  poit.itemList = [];
+  poit.cursor = 0;
 
   poit.SHOW_DURATION = 250;
   poit.HIDE_DURATION = 250;
@@ -86,11 +88,10 @@ window.Sg.PoIt.version = 1;
           poit.hideItemWindowNow();
         break; case 0:
           // do nothing
-        break; case 1:
+        break; case 3:
           poit.lastAfter = Date.now() - poit.lastTiming;
           if (poit.lastAfter < poit.SHOW_DURATION) {
             poit.lastPct = 1 - Math.pow(1 - poit.lastAfter/poit.SHOW_DURATION, 3);
-            console.log(poit.lastPct);
             poit.container.sprite.x = Graphics.width
               - poit.container.sprite.width*poit.lastPct;
             poit.container.sprite.alpha = poit.lastPct;
@@ -102,7 +103,7 @@ window.Sg.PoIt.version = 1;
           }
         break; case 2:
           // do nothing
-        break; case 3:
+        break; case 1:
           poit.lastAfter = Date.now() - poit.lastTiming;
           if (poit.lastAfter < poit.HIDE_DURATION) {
             poit.lastPct = 1 - Math.pow(poit.lastAfter/poit.HIDE_DURATION, 3);
@@ -124,13 +125,42 @@ window.Sg.PoIt.version = 1;
   // key handle
   poit.onKeyDown = function(event) {
     const poit = window.Sg.PoIt;
-    if (event.key === poit.param.itemWindowKey) {
-      console.debug(poit.TAG, 'itemWindowKey down');
-      if (poit.isShow) {
-        poit.hideItemWindow();
-      } else {
-        poit.showItemWindow();
-      }
+    console.log(event);
+    switch (event.key) {
+      default:
+        if (poit.step & 0x10) {
+          return true;
+        }
+      break; case poit.param.itemWindowKey:
+        console.debug(poit.TAG, 'itemWindowKey down');
+        if (poit.step & 0x10) {
+          poit.hideItemWindow();
+          return true;
+        } else {
+          poit.showItemWindow();
+          return true;
+        }
+      break; case 'Escape':
+        if (poit.step & 0x10) {
+          poit.hideItemWindow();
+          return true;
+        }
+      break; case 'ArrowLeft':
+        if (poit.step & 0x10) {
+          poit.cursorPrev();
+          return true;
+        }
+      break; case 'ArrowRight':
+        if (poit.step & 0x10) {
+          poit.cursorNext();
+          return true;
+        }
+      break; case 'Enter':
+        if (poit.step & 0x10) {
+          poit.cursorUse();
+          return true;
+        }
+      break;
     }
   }
 
@@ -210,10 +240,15 @@ window.Sg.PoIt.version = 1;
     }
   };
 
-  poit._createItem = function(item) {
+  poit._createItemSet = function(item) {
     const frameSprite = new Sprite();
     frameSprite.width = 64;
     frameSprite.height = 64;
+
+    const bgBitmap = new Bitmap(64, 64);
+    const bgContext = bgBitmap.context;
+    const bgSprite = new Sprite(bgBitmap);
+    frameSprite.addChild(bgSptire);
 
     const itemSprite = poit._getIconSpriteFromIndex(item.data.iconIndex);
     itemSprite.anchor.x = 0.5;
@@ -233,18 +268,30 @@ window.Sg.PoIt.version = 1;
     }
 
     const coverSprite = new Sprite(coverBitmap);
-    coverSprite.anchor.x = 0.5;
-    coverSprite.anchor.y = 0.5;
     frameSprite.addChild(coverSprite);
 
-    return frameSprite;
+    return {
+      item,
+      frameSprite,
+      bgBitmap,
+      bgContext,
+      bgSprite,
+      itemSprite,
+      coverBitmap,
+      coverContext,
+      coverSprite
+    };
   };
 
   poit._updateItemList = function() {
     const items = poit._getPlayerItemList();
     const container = poit.container.sprite;
+    poit.itemList = [];
+
+    var itemSprite = null;
     for (var i = 0; i < items.length; i++) {
-      const itemSprite = poit._createItem(items[i]);
+      poit.itemList[i] = poit._createItemSet(items[i]);
+      itemSprite = poit.itemList[i].frameSprite;
       itemSprite.anchor.x = 0.5;
       itemSprite.anchor.y = 0.5;
       itemSprite.x = i * 64 + 100 + 16;
@@ -252,8 +299,6 @@ window.Sg.PoIt.version = 1;
       container.addChild(itemSprite);
     }
 
-    // TODO: location
-    // TODO: dynamic location change
     container.width = items.length*64 + 100;
     container.height = 96;
     container.x = Graphics.width;
@@ -265,8 +310,6 @@ window.Sg.PoIt.version = 1;
     if (!poit.container.texture) {
       poit.container.texture
         = PIXI.Texture.fromCanvas(poit._ensureWindowTextureCanvas());
-      // TODO: need this?
-      //poit.container.texture.baseTexture.mipmaps = true;
     }
     return poit.container.texture;
   };
@@ -305,12 +348,12 @@ window.Sg.PoIt.version = 1;
     poit.isShow = true;
     // animation start
     poit.lastTiming = Date.now();
-    poit.step = 1;
+    poit.step = 3;
     // TODO: block key event
   };
 
   poit.hideItemWindow = function() {
-    if (!poit.isShow) return;
+    if (!(poit.step & 0x10)) return;
     if (!SceneManager._scene._SG_item) {
       poit.step = 0;
       poit.isShow = false;
@@ -319,7 +362,7 @@ window.Sg.PoIt.version = 1;
     }
     // animation start
     poit.lastTiming = Date.now();
-    poit.step = 3;
+    poit.step = 1;
   };
 
   poit.hideItemWindowNow = function() {
@@ -329,4 +372,20 @@ window.Sg.PoIt.version = 1;
     if (!SceneManager._scene._SG_item) return;
     SceneManager._scene.removeChild(SceneManager._scene._SG_item);
   }
+
+  poit.cursorSelect = function(index) {
+
+  }
+
+  poit.cursorPrev = function() {
+
+  };
+
+  poit.cursorNext = function() {
+
+  };
+
+  poit.cursorUse = function() {
+
+  };
 })();
