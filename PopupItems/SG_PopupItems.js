@@ -71,7 +71,7 @@ window.Sg.PoIt.version = 1;
 
       this._list = [];
 
-      this._containerSprite = options.containerSprite || new Sprite;
+      this._containerSprite = options.containerSprite || new Sprite();
     }
 
     _createItemInstance(item) {
@@ -121,17 +121,22 @@ window.Sg.PoIt.version = 1;
     }
 
     _cursorDraw(index) {
+      console.debug(poit.TAG, 'cursorDraw:', index);
       const item = this._list[index];
       item.bgContext.fillStyle = '#FF0000';
       item.bgContext.fillRect(0, 0, item.bgBitmap.width, item.bgBitmap.height);
+      item.bgBitmap.baseTexture.update();
     }
 
     _cursorErase(index) {
+      console.debug(poit.TAG, 'cursorErase:', index);
       const item = this._list[index];
       item.bgContext.clearRect(0, 0, item.bgBitmap.width, item.bgBitmap.height);
+      item.bgBitmap.baseTexture.update();
     }
 
     _pageDraw() {
+      console.debug(poit.TAG, 'pageDraw:', this._currentPage);
       this._containerSprite.removeChildren();
       const currentPageIndex = this._currentPage * this._maxItemPerPage;
       var itemSprite = null;
@@ -160,16 +165,24 @@ window.Sg.PoIt.version = 1;
     }
 
     setIndex(index) {
-      const newPage = getPageFromIndex(index);
-      const newCursor = getCursorFromIndex(index);
+      console.debug(poit.TAG, 'setIndex:', index);
+      if (this.getLength() === 0) return;
+      if (index >= this.getLength()) {
+        const err = new Error('Invalid index: ' + index);
+        err.code = 'ERR_INVALID_INDEX';
+        throw err;
+      }
+      const newPage = this.getPageFromIndex(index);
+      const newCursor = this.getCursorFromIndex(index);
+
+      this._cursorErase(this.getIndex());
+      this._cursorDraw(index);
+      this._currentCursor = this.getCursorFromIndex(index);
 
       if (newPage !== this._currentPage) {
         this._currentPage = newPage;
         this._pageDraw();
       }
-
-      this._cursorErase(this.getIndex());
-      // TODO
     }
 
     getLength() {
@@ -185,31 +198,25 @@ window.Sg.PoIt.version = 1;
     }
 
     cursorSelect(index) {
-
-      this._currentCursor = index;
-      if (!this._getCursorItem()) this._currentCursor = 0;
-      this._cursorDraw(this._currentCursor);
+      return this.setIndex(index);
     }
 
     cursorNext() {
       if (this.getLength() === 0) return;
-      this._cursorErase(this._currentCursor);
 
       var nextIndex = this.getIndex() + 1;
-      var needRedraw = false;
-
       if (nextIndex >= this.getLength()) nextIndex = 0;
-      if (this.getPageFromIndex(nextIndex) !== this._currentPage) needRedraw = true;
 
-      this._cursorDraw(nextIndex);
+      this.setIndex(nextIndex);
     }
 
     cursorPrev() {
       if (this.getLength() === 0) return;
-      this._cursorErase(this._currentCursor);
-      this._currentCursor--;
-      if (this._currentCursor < 0) this._currentCursor = this._maxItemPerPage - 1;
-      this._cursorDraw(this._currentCursor);
+
+      var nextIndex = this.getIndex() - 1;
+      if (nextIndex < 0) nextIndex = this.getLength() - 1;
+
+      this.setIndex(nextIndex);
     }
 
     cursorUse() {
@@ -462,14 +469,13 @@ window.Sg.PoIt.version = 1;
     if (!SceneManager._scene._SG_item) {
       console.debug(poit.TAG, 'sprite creating');
       poit.isShow = false;
-      containerSprite = new Sprite();
+      containerSprite = poit.itemList._containerSprite;
       poit.container.sprite = containerSprite;
       SceneManager._scene._SG_item = containerSprite;
       containerSprite.texture = poit._ensureWindowTexture();
     } else {
       containerSprite = SceneManager._scene._SG_item;
     }
-    poit.itemList.containerSprite = containerSprite;
     poit.itemList.update();
 
     if (!poit.isShow){
