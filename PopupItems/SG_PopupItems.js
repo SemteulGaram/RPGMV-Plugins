@@ -61,15 +61,208 @@ window.Sg.PoIt.version = 1;
   poit.param = poit.param || {};
   poit.param.itemWindowKey = poit.Parameters['Item Window Key'];
 
+  class ItemList {
+    constructor(options = {}) {
+      this._currentPage = 0;
+      this._pageCount = 0;
+
+      this._currentCursor = 0;
+      this._maxItemPerPage = options.maxItemPerPage || 6;
+
+      this._list = [];
+
+      this._containerSprite = options.containerSprite || new Sprite;
+    }
+
+    _createItemInstance(item) {
+      const frameSprite = new Sprite();
+      frameSprite.width = 64;
+      frameSprite.height = 64;
+
+      const bgBitmap = new Bitmap(64, 64);
+      const bgContext = bgBitmap.context;
+      const bgSprite = new Sprite(bgBitmap);
+      bgSprite.anchor.x = 0.5;
+      bgSprite.anchor.y = 0.5;
+      frameSprite.addChild(bgSprite);
+
+      const itemSprite = poit._getIconSpriteFromIndex(item.data.iconIndex);
+      itemSprite.anchor.x = 0.5;
+      itemSprite.anchor.y = 0.5;
+      frameSprite.addChild(itemSprite);
+
+      const coverBitmap = new Bitmap(64, 64);
+      const coverContext = coverBitmap.context;
+      if (item.count !== 1) {   // 아이템 갯수가 1이 아닐경우에만 화면에 표시
+        coverContext.fillStyle = 'white';
+        coverContext.shadowColor = 'black';
+        coverContext.shadowBlur = 5;
+        coverContext.textAlign = 'center';
+        coverContext.textBaseline = 'middle';
+        coverContext.font = '16px GameFont';
+        coverContext.fillText('' + item.count, 48, 48);
+      }
+      const coverSprite = new Sprite(coverBitmap);
+      coverSprite.anchor.x = 0.5;
+      coverSprite.anchor.y = 0.5;
+      frameSprite.addChild(coverSprite);
+
+      return {
+        item,
+        frameSprite,
+        bgBitmap,
+        bgContext,
+        bgSprite,
+        itemSprite,
+        coverBitmap,
+        coverContext,
+        coverSprite
+      };
+    }
+
+    _cursorDraw(index) {
+      const item = this._list[index];
+      item.bgContext.fillStyle = '#FF0000';
+      item.bgContext.fillRect(0, 0, item.bgBitmap.width, item.bgBitmap.height);
+    }
+
+    _cursorErase(index) {
+      const item = this._list[index];
+      item.bgContext.clearRect(0, 0, item.bgBitmap.width, item.bgBitmap.height);
+    }
+
+    _pageDraw() {
+      this._containerSprite.removeChildren();
+      const currentPageIndex = this._currentPage * this._maxItemPerPage;
+      var itemSprite = null;
+      var i = null;
+      for (i = 0; i < this._maxItemPerPage; i++) {
+        if (currentPageIndex + i >= this._list.length) break;
+        itemSprite = this._list[currentPageIndex + i].frameSprite;
+        itemSprite.anchor.x = 0.5;
+        itemSprite.anchor.y = 0.5;
+        itemSprite.x = i * 64 + 100 + 16;
+        itemSprite.y = 32 + 16;
+        this._containerSprite.addChild(itemSprite);
+      }
+
+      // 아이템 개수가 한 페이지를 넘어가면 무조건 최대 크기로 그리기
+      poit._drawWindow(this._list.length >= this._maxItemPerPage
+        ? this._maxItemPerPage*64 : (i*64), 96);
+    }
+
+    getCursorItem() {
+      return this._list[this.getIndex()];
+    }
+
+    getIndex() {
+      return this._currentPage*this._maxItemPerPage + this._currentCursor;
+    }
+
+    setIndex(index) {
+      const newPage = getPageFromIndex(index);
+      const newCursor = getCursorFromIndex(index);
+
+      if (newPage !== this._currentPage) {
+        this._currentPage = newPage;
+        this._pageDraw();
+      }
+
+      this._cursorErase(this.getIndex());
+      // TODO
+    }
+
+    getLength() {
+      return this._list.length;
+    }
+
+    getPageFromIndex(index) {
+      return parseInt(index/this._maxItemPerPage);
+    }
+
+    getCursorFromIndex(index) {
+      return index % this._maxItemPerPage;
+    }
+
+    cursorSelect(index) {
+
+      this._currentCursor = index;
+      if (!this._getCursorItem()) this._currentCursor = 0;
+      this._cursorDraw(this._currentCursor);
+    }
+
+    cursorNext() {
+      if (this.getLength() === 0) return;
+      this._cursorErase(this._currentCursor);
+
+      var nextIndex = this.getIndex() + 1;
+      var needRedraw = false;
+
+      if (nextIndex >= this.getLength()) nextIndex = 0;
+      if (this.getPageFromIndex(nextIndex) !== this._currentPage) needRedraw = true;
+
+      this._cursorDraw(nextIndex);
+    }
+
+    cursorPrev() {
+      if (this.getLength() === 0) return;
+      this._cursorErase(this._currentCursor);
+      this._currentCursor--;
+      if (this._currentCursor < 0) this._currentCursor = this._maxItemPerPage - 1;
+      this._cursorDraw(this._currentCursor);
+    }
+
+    cursorUse() {
+      if (this.getLength() === 0) return;
+      // TODO: use item
+    }
+
+    pageNext() {
+      this._currentPage++;
+      if (this._currentPage >= this._pageCount) this._currentPage = 0;
+      this._pageDraw();
+    }
+
+    pagePrev() {
+      this._currentPage--;
+      if (this._currentPage < 0) this._currentPage = this._pageCount - 1;
+      this._pageDraw();
+    }
+
+    update() {
+      const items = poit._getPlayerItemList();
+
+      this._pageCount = parseInt(Math.ceil(items.length/this._maxItemPerPage));
+      if (this._currentPage >= this._pageCount) this._currentPage = this._pageCount - 1;
+
+      this._list = [];
+      for (var i = 0; i < items.length; i++) {
+        this._list[i] = this._createItemInstance(items[i]);
+      }
+      this._pageDraw();
+    }
+  }
+
+  // is sprite on scene (untrustable)
   poit.isShow = false;
+  // temp variable
   poit.lastTiming = null;
+  // temp variable
   poit.lastAfter = null;
+  // temp variable
   poit.lastPct = null;
-  // 0(0x00): disappear, 1(0x01): disappering, 2(0x10): appear, 3(0x11): appearing
+  /* status:
+   * - 0(0b00): disappear
+   * - 1(0b01): disappering
+   * - 2(0b10): appear
+   * - 3(0b11): appearing
+   */
   poit.step = 0;
+  // sprite data container
   poit.container = {};
-  poit.itemList = [];
-  poit.cursor = 0;
+  poit.itemList = new ItemList({
+    // TODO: max item per page
+  });
 
   poit.SHOW_DURATION = 250;
   poit.HIDE_DURATION = 250;
@@ -125,40 +318,40 @@ window.Sg.PoIt.version = 1;
   // key handle
   poit.onKeyDown = function(event) {
     const poit = window.Sg.PoIt;
-    console.log(event);
     switch (event.key) {
       default:
-        if (poit.step & 0x10) {
-          return true;
+        if (poit.step & 0b10) {
+          event.stopImmediatePropagation();
         }
       break; case poit.param.itemWindowKey:
         console.debug(poit.TAG, 'itemWindowKey down');
-        if (poit.step & 0x10) {
-          poit.hideItemWindow();
-          return true;
+        if (poit.step & 0b10) {
+          if (poit.hideItemWindow()) {
+            poit.showItemWindow();
+          }
         } else {
           poit.showItemWindow();
-          return true;
         }
+        event.stopImmediatePropagation();
       break; case 'Escape':
-        if (poit.step & 0x10) {
+        if (poit.step & 0b10) {
           poit.hideItemWindow();
-          return true;
+          event.stopImmediatePropagation();
         }
       break; case 'ArrowLeft':
-        if (poit.step & 0x10) {
-          poit.cursorPrev();
-          return true;
+        if (poit.step & 0b10) {
+          poit.itemList.cursorPrev();
+          event.stopImmediatePropagation();
         }
       break; case 'ArrowRight':
-        if (poit.step & 0x10) {
-          poit.cursorNext();
-          return true;
+        if (poit.step & 0b10) {
+          poit.itemList.cursorNext();
+          event.stopImmediatePropagation();
         }
       break; case 'Enter':
-        if (poit.step & 0x10) {
-          poit.cursorUse();
-          return true;
+        if (poit.step & 0b10) {
+          poit.itemList.cursorUse();
+          event.stopImmediatePropagation();
         }
       break;
     }
@@ -240,72 +433,6 @@ window.Sg.PoIt.version = 1;
     }
   };
 
-  poit._createItemSet = function(item) {
-    const frameSprite = new Sprite();
-    frameSprite.width = 64;
-    frameSprite.height = 64;
-
-    const bgBitmap = new Bitmap(64, 64);
-    const bgContext = bgBitmap.context;
-    const bgSprite = new Sprite(bgBitmap);
-    frameSprite.addChild(bgSptire);
-
-    const itemSprite = poit._getIconSpriteFromIndex(item.data.iconIndex);
-    itemSprite.anchor.x = 0.5;
-    itemSprite.anchor.y = 0.5;
-    frameSprite.addChild(itemSprite);
-
-    const coverBitmap = new Bitmap(64, 64);
-    const coverContext = coverBitmap.context;
-    if (item.count !== 1) {   // 아이템 갯수가 1이 아닐경우에만 화면에 표시
-      coverContext.fillStyle = 'white';
-      coverContext.shadowColor = 'black';
-      coverContext.shadowBlur = 5;
-      coverContext.textAlign = 'center';
-      coverContext.textBaseline = 'middle';
-      coverContext.font = '16px GameFont';
-      coverContext.fillText('' + item.count, 48, 48);
-    }
-
-    const coverSprite = new Sprite(coverBitmap);
-    frameSprite.addChild(coverSprite);
-
-    return {
-      item,
-      frameSprite,
-      bgBitmap,
-      bgContext,
-      bgSprite,
-      itemSprite,
-      coverBitmap,
-      coverContext,
-      coverSprite
-    };
-  };
-
-  poit._updateItemList = function() {
-    const items = poit._getPlayerItemList();
-    const container = poit.container.sprite;
-    poit.itemList = [];
-
-    var itemSprite = null;
-    for (var i = 0; i < items.length; i++) {
-      poit.itemList[i] = poit._createItemSet(items[i]);
-      itemSprite = poit.itemList[i].frameSprite;
-      itemSprite.anchor.x = 0.5;
-      itemSprite.anchor.y = 0.5;
-      itemSprite.x = i * 64 + 100 + 16;
-      itemSprite.y = 32 + 16;
-      container.addChild(itemSprite);
-    }
-
-    container.width = items.length*64 + 100;
-    container.height = 96;
-    container.x = Graphics.width;
-    container.y = Graphics.height - container.height;
-    poit._drawWindowTexture(items.length*64, 96);
-  };
-
   poit._ensureWindowTexture = function() {
     if (!poit.container.texture) {
       poit.container.texture
@@ -314,7 +441,9 @@ window.Sg.PoIt.version = 1;
     return poit.container.texture;
   };
 
-  poit._drawWindowTexture = function(width, height) {
+  poit._drawWindow = function(width, height) {
+    poit.container.sprite.width = width + 100;
+    poit.container.sprite.height = height;
     const result = poit._drawWindowTextureCanvas(width, height);
     poit._ensureWindowTexture().baseTexture.update();
     return result;
@@ -328,41 +457,42 @@ window.Sg.PoIt.version = 1;
       return false;
     }
 
-    var container = null
+    var containerSprite = null
     // Create item window create
     if (!SceneManager._scene._SG_item) {
       console.debug(poit.TAG, 'sprite creating');
       poit.isShow = false;
-      container = new Sprite();
-      poit.container.sprite = container;
-      SceneManager._scene._SG_item = container;
-      container.texture = poit._ensureWindowTexture();
+      containerSprite = new Sprite();
+      poit.container.sprite = containerSprite;
+      SceneManager._scene._SG_item = containerSprite;
+      containerSprite.texture = poit._ensureWindowTexture();
     } else {
-      container = SceneManager._scene._SG_item;
-      container.removeChildren();
+      containerSprite = SceneManager._scene._SG_item;
     }
+    poit.itemList.containerSprite = containerSprite;
+    poit.itemList.update();
 
-    poit._updateItemList();
-
-    if (!poit.isShow) SceneManager._scene.addChild(container);
+    if (!poit.isShow){
+      containerSprite.x = Graphics.width;
+      containerSprite.y = Graphics.height - containerSprite.height;
+      SceneManager._scene.addChild(containerSprite);
+    }
     poit.isShow = true;
     // animation start
     poit.lastTiming = Date.now();
     poit.step = 3;
-    // TODO: block key event
   };
 
   poit.hideItemWindow = function() {
-    if (!(poit.step & 0x10)) return;
+    if (!(poit.step & 0b10)) return false;
     if (!SceneManager._scene._SG_item) {
-      poit.step = 0;
-      poit.isShow = false;
-      poit.showItemWindow();
-      return;
+      poit.hideItemWindowNow();
+      return true;
     }
     // animation start
     poit.lastTiming = Date.now();
     poit.step = 1;
+    return false;
   };
 
   poit.hideItemWindowNow = function() {
@@ -373,19 +503,4 @@ window.Sg.PoIt.version = 1;
     SceneManager._scene.removeChild(SceneManager._scene._SG_item);
   }
 
-  poit.cursorSelect = function(index) {
-
-  }
-
-  poit.cursorPrev = function() {
-
-  };
-
-  poit.cursorNext = function() {
-
-  };
-
-  poit.cursorUse = function() {
-
-  };
 })();
