@@ -105,7 +105,7 @@ window.Sg.PoHp.version = 1.05;
   var pohp = window.Sg.PoHp;
 
   const TAG = 'Sg.SG_PopupHp';
-  Sg.PoHp.TAG = TAG;
+  window.Sg.PoHp.TAG = TAG;
   console.info(pohp.TAG, 'load');
 
   pohp.Parameters = PluginManager.parameters('SG_PopupHP');
