@@ -123,14 +123,16 @@ window.Sg.PoIt.version = 1;
     _cursorDraw(index) {
       console.debug(poit.TAG, 'cursorDraw:', index);
       const item = this._list[index];
+      if (!item) return;
       item.bgContext.fillStyle = '#FF0000';
-      item.bgContext.fillRect(0, 0, item.bgBitmap.width, item.bgBitmap.height);
+      item.bgContext.fillRect(8, 8, item.bgBitmap.width - 16, item.bgBitmap.height - 16);
       item.bgBitmap.baseTexture.update();
     }
 
     _cursorErase(index) {
       console.debug(poit.TAG, 'cursorErase:', index);
       const item = this._list[index];
+      if (!item) return;
       item.bgContext.clearRect(0, 0, item.bgBitmap.width, item.bgBitmap.height);
       item.bgBitmap.baseTexture.update();
     }
@@ -247,6 +249,7 @@ window.Sg.PoIt.version = 1;
         this._list[i] = this._createItemInstance(items[i]);
       }
       this._pageDraw();
+      this.setIndex(this.getIndex());
     }
   }
 
