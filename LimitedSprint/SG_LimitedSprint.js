@@ -47,16 +47,6 @@ window.Sg.LiSp.version = 1;
  * 메뉴창을 열지 않고 아이템을 확인할 수 있게 해 줌
  *
  * ============================================================================
- * How to Use
- * ============================================================================
- *
- * 해당하는 명령어를 복사해서 [이벤트 명령] -> [스크립트]에 붙여넣기해서 사용
- *
- * window.Sg.PoIt.showItemWindow();       팝업을 띄움
- * window.Sg.PoIt.hideItemWindow();       팝업을 닫음
- * window.Sg.PoIt.hideItemWindowNow();    페이드 아웃 없이 팝업을 즉시 닫음
- *
- * ============================================================================
  * Changelog
  * ============================================================================
  *
@@ -152,19 +142,6 @@ window.Sg.LiSp.version = 1;
   }
 
   lisp._instance = new LimitedSprint(lisp.param);
-
-  // Override
-  // 대쉬 업데이트 오버라이드
-  /*
-  lisp.GamePlayer_updateDashing = Game_Player.prototype.updateDashing;
-  Game_Player.prototype.updateDashing = function() {
-    window.Sg.LiSp.GamePlayer_updateDashing.apply(this, arguments);
-
-    if (window.Sg.LiSp._instance.exhaust) {
-
-    }
-  };
-  */
 
   // Override
   // 플레이어 움직임 허용여부 오버라이드
