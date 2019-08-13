@@ -44,9 +44,36 @@ window.Sg.SoMo.version = 1;
 
   // Skip parameters: no options
 
-  class SophisticatedMovement {
-    constructor () {
-      
+
+  // Override methods
+  somo.Game_Player_getInputDirection = Game_Player.prototype.getInputDirection;
+  Game_Player.prototype.getInputDirection = function () {
+    window.Sg.SoMo.Game_Player_getInputDirection.apply(this, arguments);
+    return Input.dir8;
+  };
+
+  somo.Game_Player_moveByInput = Game_Player.prototype.moveByInput;
+  GamePlayer.prototype.moveByInput = function () {
+    if (!this.isMoving() && this.canMove()) {
+        var direction = this.getInputDirection();
+        if (direction > 0) {
+            $gameTemp.clearDestination();
+        } else if ($gameTemp.isDestinationValid()){
+            var x = $gameTemp.destinationX();
+            var y = $gameTemp.destinationY();
+            // TODO: Override findDirectionTo
+            direction = this.findDirectionTo(x, y);
+        }
+        if (direction > 0) {
+            this.executeMove(direction);
+        }
     }
   }
-});
+
+
+  class SophisticatedMovement {
+    constructor () {
+
+    }
+  }
+})();
